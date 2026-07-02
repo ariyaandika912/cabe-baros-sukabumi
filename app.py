@@ -4,17 +4,27 @@ import numpy as np
 import pickle
 import os
 
-# TRICK: Jika model belum terbentuk di server, jalankan train.py otomatis
-if not os.path.exists('model_rf.pkl'):
+# TRICK: Cek apakah file model belum ada ATAU ukurannya kosong/0 bytes (korup)
+if not os.path.exists('model_rf.pkl') or os.path.getsize('model_rf.pkl') == 0:
+    # Hapus file pkl yang kosong jika ada agar tidak bikin EOFError
+    if os.path.exists('model_rf.pkl'):
+        os.remove('model_rf.pkl')
+    
+    st.info("Sedang melatih model Random Forest di server... Harap tunggu sebentar.")
     os.system('python train.py')
 
-# Load model
-@st.cache_resource
+# Load model dengan aman
 def load_model():
     with open('model_rf.pkl', 'rb') as file:
         return pickle.load(file)
 
-model = load_model()
+# Panggil fungsi tanpa cache_resource dulu untuk memastikan file terbaca fresh
+try:
+    model = load_model()
+except EOFError:
+    # Jika masih apes kena EOFError, paksa training ulang sekali lagi
+    os.system('python train.py')
+    model = load_model()
 
 # Tampilan Aplikasi
 st.set_page_config(page_title="Prediksi Panen Cabe Baros", layout="centered")
